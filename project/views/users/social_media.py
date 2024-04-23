@@ -374,3 +374,8 @@ def get_likes():
     likes_count = Like.query.filter_by(post_id=post_id).count()
     socketio.emit('likes_count_updated', {'post_id': post_id, 'likes_count': likes_count}, namespace='/social_media')
     return jsonify({'likes_count': likes_count})
+
+@social_media_blueprint.route('/abc', methods=['POST'])
+@jwt_required()
+def abc():
+    return jsonify({'message': 'abc'})
