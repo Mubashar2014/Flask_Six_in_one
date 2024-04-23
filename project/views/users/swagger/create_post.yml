@@ -1,0 +1,26 @@
+swagger: '2.0'
+info:
+  title: 'Social Media API'
+  description: 'API for a social media application'
+  version: '1.0'
+
+paths:
+  /create_post:
+    post:
+      summary: 'Create a new post'
+      consumes:
+        - 'multipart/form-data'
+      parameters:
+        - in: formData
+          name: image
+          type: file
+          required: true
+          description: The image file for the post.
+        - in: formData
+          name: description
+          type: string
+          required: true
+          description: The description for the post.
+      responses:
+        '200':
+          description: Post created successfully
