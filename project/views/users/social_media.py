@@ -58,6 +58,7 @@ def create_post():
         db.session.add(new_post)
         db.session.commit()
 
+        socketio.emit('New post', {'user_id': current_user.id}, namespace='/social_media')
         return jsonify({'message': 'Post created successfully'})
     else:
         return jsonify({'error': 'Invalid file type, allowed types are: png, jpg, jpeg, gif'}), 400
@@ -85,7 +86,7 @@ def get_posts():
         }
         posts_data.append(post_data)
 
-
+    socketio.emit('get_posts', {'user_id': current_user.id}, namespace='/social_media')
     return jsonify({'posts': posts_data}), 200
 
 
@@ -100,7 +101,7 @@ def delete_post():
 
     db.session.delete(post)
     db.session.commit()
-
+    socketio.emit('Post Deleted', {'user_id': current_user.id}, namespace='/social_media')
     return jsonify({'message': 'Post deleted successfully'})
 
 
@@ -138,7 +139,7 @@ def edit_post():
 
     post.timestamp = datetime.now()
     db.session.commit()
-
+    socketio.emit('Post Edited', {'user_id': current_user.id}, namespace='/social_media')
     return jsonify({'message': 'Post edited successfully'})
 
 
