@@ -40,9 +40,12 @@ def create_post():
     """
     image_file = request.files.get('image')
     description = request.form.get('description')
+    timestamp = request.form.get('timestamp')
 
-    if not image_file or not description:
-        return jsonify({'error': 'Image and description are required'}), 400
+    if not image_file or not description or not timestamp:
+        return jsonify({'error': 'Image, date and description are required'}), 400
+
+    timestamp = datetime.strptime(timestamp, '%Y-%m-%dT%H:%M')
 
     if image_file and allowed_file(image_file.filename):
         filename = secure_filename(image_file.filename)
@@ -50,44 +53,91 @@ def create_post():
         unique_filename = str(uuid.uuid4()) + '.' + file_ext
         filepath = os.path.join('project/media/posts', unique_filename)
         image_file.save(filepath)
-        image_data = filepath  # Save the file path to the database
+        image_data = filepath
 
         user = User.query.filter_by(id=current_user.id).first()
-        new_post = Post(image=image_data, description=description, user_id=current_user.id, timestamp=datetime.now())
+        new_post = Post(image=image_data, description=description, user_id=current_user.id, timestamp=timestamp)
 
         db.session.add(new_post)
         db.session.commit()
 
         socketio.emit('New post', {'user_id': current_user.id}, namespace='/social_media')
-        return jsonify({'message': 'Post created successfully'})
+        return jsonify({'message': 'Post created successfully', 'category': 'success', 'status': 200})
     else:
-        return jsonify({'error': 'Invalid file type, allowed types are: png, jpg, jpeg, gif'}), 400
+        return jsonify(
+            {'error': 'Invalid file type, allowed types are: png, jpg, jpeg, gif', 'category': 'error', 'status': 400})
+
 
 def allowed_file(filename):
     return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
 
+
 @social_media_blueprint.route('/get_all_posts', methods=['GET'])
 @jwt_required()
 def get_posts():
-    posts = Post.query.all()
+    try:
+        posts = Post.query.all()
 
-    if not posts:
-        return jsonify({'error': 'No posts found'}), 404
+        if not posts:
+            return jsonify({'error': 'No posts found'}), 404
 
-    posts_data = []
-    for post in posts:
-        post_data = {
-            'id': post.id,
-            'image': post.image,  # You might want to convert this to base64 if needed
-            'description': post.description,
-            'user_id': post.user_id,
-            'timestamp': post.timestamp.strftime('%Y-%m-%d %H:%M:%S')
+        posts_data = []
+        for post in posts:
+            followers_query = Follow.query.filter_by(followed_id=post.user_id)
+            followers_count = followers_query.count()
+            followings_query = Follow.query.filter_by(follower_id=post.user_id)
+            followings_count = followings_query.count()
+            comment = Comment.query.filter_by(post_id=post.id).order_by(Comment.timestamp.desc()).first()
 
-        }
-        posts_data.append(post_data)
+            if not comment:
+                text = None
+                comment_id = None
+                timestamp = None
+                user_id = None
+            else:
+                text = comment.text
+                comment_id = comment.id
+                timestamp = comment.timestamp
+                user_id = comment.user_id
 
-    socketio.emit('get_posts', {'user_id': current_user.id}, namespace='/social_media')
-    return jsonify({'posts': posts_data}), 200
+            post_data = {
+                "post_object":{
+                    'post_id': post.id,
+                    'image': post.image,
+                    'description': post.description,
+                    'timestamp': post.timestamp.strftime('%Y-%m-%d %H:%M:%S'),
+                    "Latest_comment": {
+                        "comment_id": comment_id,
+                        "comment": text,
+                        "timestamp": timestamp,
+                        "user_id": user_id
+                    },
+                },
+
+                'user_object': {
+                    'user_id': post.user.id,
+                    "followers_count": followers_count,
+                    "followings_count": followings_count,
+                    "username": post.user.full_name,
+                    "profile_pic": post.user.photo,
+                    "facebook_id": "",
+                    "instagram_id": "",
+                    "tiktok_id": "",
+                    "youtube_id ": "",
+
+
+
+                },
+
+
+            }
+            posts_data.append(post_data)
+
+        socketio.emit('get_posts', {'user_id': current_user.id}, namespace='/social_media')
+        return jsonify({'posts': posts_data}), 200
+
+    except Exception as e:
+        return jsonify({'error': str(e)}), 404
 
 
 @social_media_blueprint.route('/delete_post', methods=['DELETE'])
@@ -105,7 +155,6 @@ def delete_post():
     return jsonify({'message': 'Post deleted successfully'})
 
 
-
 @social_media_blueprint.route('/edit_post', methods=['PUT'])
 @jwt_required()
 def edit_post():
@@ -120,10 +169,8 @@ def edit_post():
 
         # Get new data from the request
 
-
     if not new_description and not image_file:
         return jsonify({'error': 'Description or image is required for editing'}), 400
-
 
     if new_description:
         post.description = new_description
@@ -141,8 +188,6 @@ def edit_post():
     db.session.commit()
     socketio.emit('Post Edited', {'user_id': current_user.id}, namespace='/social_media')
     return jsonify({'message': 'Post edited successfully'})
-
-
 
 
 @social_media_blueprint.route('/follow', methods=['POST'])
@@ -166,7 +211,6 @@ def follow_user():
         socketio.emit('follow_count_updated', {'user_id': current_user.id}, namespace='/social_media')
         return jsonify({'message': f'You have unfollowed {user_to_follow.full_name}'}), 200
 
-
     new_follow = Follow(follower_id=current_user.id, followed_id=user_id, timestamp=datetime.now())
     db.session.add(new_follow)
     db.session.commit()
@@ -177,7 +221,6 @@ def follow_user():
 @social_media_blueprint.route('/unfollow', methods=['POST'])
 @jwt_required()
 def unfollow_user():
-
     user_id = request.args.get('user_id')
 
     if current_user.id == user_id:
@@ -198,10 +241,14 @@ def unfollow_user():
 
     return jsonify({'message': f'You have unfollowed {user_to_unfollow.full_name}'})
 
+
 @social_media_blueprint.route('/followers', methods=['GET'])
 @jwt_required()
 def get_followers():
     user_id = request.args.get('user_id')
+
+    if not user_id:
+        return jsonify({'error': 'User ID is required'}), 400
 
     user = User.query.get(user_id)
 
@@ -214,9 +261,11 @@ def get_followers():
     followers = followers_query.all()
     followers_data = [{'id': follower.follower.id, 'full_name': follower.follower.full_name} for follower in followers]
 
-    socketio.emit('followers_count_updated', {'user_id': user_id,'followers_count': followers_count}, namespace='/social_media')
+    socketio.emit('followers_count_updated', {'user_id': user_id, 'followers_count': followers_count},
+                  namespace='/social_media')
 
     return jsonify({'followers': followers_data, 'followers_count': followers_count})
+
 
 @social_media_blueprint.route('/followings', methods=['GET'])
 @jwt_required()
@@ -233,18 +282,14 @@ def get_followings():
     followings = followings_query.all()
     followings_data = [{'id': following.followed.id, 'full_name': following.followed.full_name} for following in
                        followings]
-    socketio.emit('followings_count_updated', {'user_id': user_id,'followings_count': followings_count}, namespace='/social_media')
+    socketio.emit('followings_count_updated', {'user_id': user_id, 'followings_count': followings_count},
+                  namespace='/social_media')
     return jsonify({'followings': followings_data, 'followings_count': followings_count})
-
-
-
-
 
 
 @social_media_blueprint.route('/create_comment', methods=['POST'])
 @jwt_required()
 def create_comment():
-
     post_id = request.form.get('post_id')
     post = Post.query.get(post_id)
 
@@ -262,6 +307,7 @@ def create_comment():
 
     return jsonify({'message': 'Comment created successfully'})
 
+
 @social_media_blueprint.route('/get_comments/', methods=['GET'])
 def get_comments():
     post_id = request.args.get('post_id')
@@ -274,14 +320,17 @@ def get_comments():
     comments_count = comments_query.count()
 
     comments = comments_query.all()
-    comments_data = [{'id': comment.id, 'text': comment.text, 'user_id': comment.user_id, 'timestamp': comment.timestamp} for comment in comments]
-    socketio.emit('comment_count_updated', {'user_id': current_user.id,'comments_count': comments_count}, namespace='/social_media')
+    comments_data = [
+        {'id': comment.id, 'text': comment.text, 'user_id': comment.user_id, 'timestamp': comment.timestamp} for comment
+        in comments]
+    socketio.emit('comment_count_updated', {'user_id': current_user.id, 'comments_count': comments_count},
+                  namespace='/social_media')
     return jsonify({'comments': comments_data, 'comments_count': comments_count})
+
 
 @social_media_blueprint.route('/update_comment', methods=['PUT'])
 @jwt_required()
 def update_comment():
-
     comment_id = request.args.get('comment_id')
     comment = Comment.query.get(comment_id)
 
@@ -301,10 +350,10 @@ def update_comment():
 
     return jsonify({'message': 'Comment updated successfully'})
 
+
 @social_media_blueprint.route('/delete_comment', methods=['DELETE'])
 @jwt_required()
 def delete_comment():
-
     comment_id = request.args.get('comment_id')
     comment = Comment.query.get(comment_id)
 
@@ -319,6 +368,7 @@ def delete_comment():
 
     return jsonify({'message': 'Comment deleted successfully'})
 
+
 @social_media_blueprint.route('/like_post', methods=['POST'])
 @jwt_required()
 def like_post():
@@ -329,11 +379,9 @@ def like_post():
     if not post:
         return jsonify({'error': 'Post not found'}), 404
 
-
     existing_like = Like.query.filter_by(user_id=current_user.id, post_id=post_id).first()
 
     if existing_like:
-
         db.session.delete(existing_like)
         db.session.commit()
         socketio.emit('like_count_updated', {'user_id': current_user.id}, namespace='/social_media')
@@ -344,6 +392,7 @@ def like_post():
     db.session.commit()
     socketio.emit('like_count_updated', {'user_id': current_user.id}, namespace='/social_media')
     return jsonify({'message': 'Post liked successfully'})
+
 
 @social_media_blueprint.route('/unlike_post', methods=['POST'])
 @jwt_required()
@@ -364,6 +413,7 @@ def unlike_post():
 
     return jsonify({'message': 'Post unliked successfully'})
 
+
 @social_media_blueprint.route('/get_likes', methods=['GET'])
 def get_likes():
     post_id = request.args.get('post_id')
@@ -375,6 +425,7 @@ def get_likes():
     likes_count = Like.query.filter_by(post_id=post_id).count()
     socketio.emit('likes_count_updated', {'post_id': post_id, 'likes_count': likes_count}, namespace='/social_media')
     return jsonify({'likes_count': likes_count})
+
 
 @social_media_blueprint.route('/abc', methods=['POST'])
 @jwt_required()

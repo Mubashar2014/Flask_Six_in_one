@@ -19,6 +19,7 @@ class User(db.Model):
     recovery_created_at = db.Column(db.DateTime())
     oauth_id = db.Column(db.Text(), default=None)
     login_type = db.Column(db.String(300))
+    photo = db.Column(db.String(500))
     verification_token = db.Column(db.String(700))
     email_counter = db.Column(db.Integer, default=0)
     email_validation_date = db.Column(db.DateTime())
