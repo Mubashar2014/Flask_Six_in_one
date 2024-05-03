@@ -87,7 +87,15 @@ def get_posts():
             followers_count = followers_query.count()
             followings_query = Follow.query.filter_by(follower_id=post.user_id)
             followings_count = followings_query.count()
+
             comment = Comment.query.filter_by(post_id=post.id).order_by(Comment.timestamp.desc()).first()
+
+            like = Like.query.filter_by(post_id=post.id).first()
+            like_count = Like.query.filter_by(post_id=post.id).count()
+            comments = Comment.query.filter_by(post_id=post.id).all()
+            comments_count = Comment.query.filter_by(post_id=post.id).count()
+
+
 
             if not comment:
                 text = None
@@ -106,6 +114,8 @@ def get_posts():
                     'image': post.image,
                     'description': post.description,
                     'timestamp': post.timestamp.strftime('%Y-%m-%d %H:%M:%S'),
+                    "like_count": like_count,
+                    "comments_count": comments_count,
                     "Latest_comment": {
                         "comment_id": comment_id,
                         "comment": text,

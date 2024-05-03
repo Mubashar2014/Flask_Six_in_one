@@ -387,12 +387,24 @@ def signup():
 @users_auth_blueprint.route('/login', methods=['POST'])
 def user_login():
     if request.method == "POST":
+        print("called")
         login_type = request.form.get('login_type')
         email = request.form.get('email')
         full_name = request.form.get('name')
 
         user_data = User.query.filter_by(email=email).first()
         if user_data:
+            user_object = {
+                "id": user_data.id,
+                "full_name": user_data.full_name,
+                "following_count": 0,
+                "followers_count": 0,
+                "profile_pic": user_data.photo,
+                "facebook_id": "",
+                "instagram_id": "",
+                "tiktok_id": "",
+                "youtube_id ": "",
+            }
             user_id = user_data.id
             user_additional_info = UsersAdditionalInfo.query.filter_by(user_id=user_id).first()
 
@@ -429,8 +441,10 @@ def user_login():
             #     plan = "false"
             # if not user_additional_info:
             #     return jsonify(message="no fitness goal found", category="error", status=400)
+
+
             return jsonify(message="user logged in successfully", access_token=str(access_token),
-                           category="success", status=200, user_additional_info_status=user_additional_info_status)
+                           category="success", status=200, user_additional_info_status=user_additional_info_status, user_object=user_object)
         elif login_type == "oauth":
 
             oauth_id = request.form.get('oauth_id')
@@ -452,7 +466,7 @@ def user_login():
                 access_token = create_access_token(identity=user_data.id, expires_delta=expires)
 
                 return jsonify(message="login successful", access_token=str(access_token),
-                               category="success", status=200, user_additional_info_status=False)
+                               category="success", status=200, user_additional_info_status=False,user_object=user_object)
             if not user.oauth_id:
                 return jsonify(message="no auth id for this user", category="error", status=400)
             user_oauth_id = user.oauth_id.split("-")
@@ -469,7 +483,7 @@ def user_login():
             expires = datetime.timedelta(days=30)
             access_token = create_access_token(identity=user.id, expires_delta=expires)
             return jsonify(message="login successful", access_token=str(access_token),
-                           category="success", status=200, user_additional_info_status=user_additional_info_status)
+                           category="success", status=200, user_additional_info_status=user_additional_info_status, user_object=user_object)
         elif login_type == "apple_oauth":
 
             oauth_id = request.form.get('oauth_id')
@@ -482,7 +496,7 @@ def user_login():
                 expires = datetime.timedelta(days=30)
                 access_token = create_access_token(identity=user.id, expires_delta=expires)
                 return jsonify(message="login successful", access_token=str(access_token),
-                               category="success", status=200, user_additional_info_status=False)
+                               category="success", status=200, user_additional_info_status=False,user_object=user_object)
             elif oauth_response != email:
                 user = User.query.filter_by(email=email).first()
                 if not user:
@@ -513,7 +527,7 @@ def upload_file():
             filename = secure_filename(file.filename)
             file.save(os.path.join(config.UPLOAD_FOLDER, str(ts) + filename))
             photo_dump = config.UPLOAD_FOLDER + str(ts) + filename
-            if UsersAdditionalInfo.query.filter_by(user_id=current_user.id).update(dict(photo=photo_dump)):
+            if User.query.filter_by(user_id=current_user.id).update(dict(photo=photo_dump)):
                 db.session.commit()
             return jsonify(message="uploaded successfully", category="success", status=200)
     return jsonify(message="method not allowed", category="error", status=400)
