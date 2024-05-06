@@ -38,34 +38,38 @@ def create_post():
       200:
         description: Post created successfully.
     """
-    image_file = request.files.get('image')
-    description = request.form.get('description')
-    timestamp = request.form.get('timestamp')
+    try:
+        image_file = request.files.get('image')
+        description = request.form.get('description')
+        timestamp = request.form.get('timestamp')
 
-    if not image_file or not description or not timestamp:
-        return jsonify({'error': 'Image, date and description are required'}), 400
+        if not image_file or not description or not timestamp:
+            return jsonify({'error': 'Image, date and description are required'}), 400
 
-    timestamp = datetime.strptime(timestamp, '%Y-%m-%dT%H:%M')
+        timestamp = datetime.strptime(timestamp, '%Y-%m-%dT%H:%M')
 
-    if image_file and allowed_file(image_file.filename):
-        filename = secure_filename(image_file.filename)
-        file_ext = filename.rsplit('.', 1)[1].lower()
-        unique_filename = str(uuid.uuid4()) + '.' + file_ext
-        filepath = os.path.join('project/media/posts', unique_filename)
-        image_file.save(filepath)
-        image_data = filepath
+        if image_file and allowed_file(image_file.filename):
+            filename = secure_filename(image_file.filename)
+            file_ext = filename.rsplit('.', 1)[1].lower()
+            unique_filename = str(uuid.uuid4()) + '.' + file_ext
+            filepath = os.path.join('project/media/posts', unique_filename)
+            image_file.save(filepath)
+            image_data = filepath
 
-        user = User.query.filter_by(id=current_user.id).first()
-        new_post = Post(image=image_data, description=description, user_id=current_user.id, timestamp=timestamp)
+            user = User.query.filter_by(id=current_user.id).first()
+            new_post = Post(image=image_data, description=description, user_id=current_user.id, timestamp=timestamp)
 
-        db.session.add(new_post)
-        db.session.commit()
+            db.session.add(new_post)
+            db.session.commit()
 
-        socketio.emit('New post', {'user_id': current_user.id}, namespace='/social_media')
-        return jsonify({'message': 'Post created successfully', 'category': 'success', 'status': 200})
-    else:
-        return jsonify(
-            {'error': 'Invalid file type, allowed types are: png, jpg, jpeg, gif', 'category': 'error', 'status': 400})
+            socketio.emit('New post', {'user_id': current_user.id}, namespace='/social_media')
+            return jsonify({'message': 'Post created successfully', 'category': 'success', 'status': 200})
+        else:
+            return jsonify(
+                {'error': 'Invalid file type, allowed types are: png, jpg, jpeg, gif', 'category': 'error', 'status': 400})
+
+    except Exception as e:
+        return jsonify({'error': str(e), 'category': 'error', 'status': 400})
 
 
 def allowed_file(filename):
@@ -90,9 +94,8 @@ def get_posts():
 
             comment = Comment.query.filter_by(post_id=post.id).order_by(Comment.timestamp.desc()).first()
 
-            like = Like.query.filter_by(post_id=post.id).first()
+
             like_count = Like.query.filter_by(post_id=post.id).count()
-            comments = Comment.query.filter_by(post_id=post.id).all()
             comments_count = Comment.query.filter_by(post_id=post.id).count()
 
 
@@ -149,7 +152,67 @@ def get_posts():
     except Exception as e:
         return jsonify({'error': str(e)}), 404
 
+@social_media_blueprint.route('/get_post', methods=['GET'])
+@jwt_required()
+def get_post():
+    post_id = request.args.get('post_id')
+    post = Post.query.filter_by(id=post_id).first()
+    if not post:
+        return jsonify({'error': 'Post not found'}), 404
 
+    followers_query = Follow.query.filter_by(followed_id=post.user_id)
+    followers_count = followers_query.count()
+    followings_query = Follow.query.filter_by(follower_id=post.user_id)
+    followings_count = followings_query.count()
+
+    comment = Comment.query.filter_by(post_id=post.id).order_by(Comment.timestamp.desc()).first()
+
+    like_count = Like.query.filter_by(post_id=post.id).count()
+    comments_count = Comment.query.filter_by(post_id=post.id).count()
+
+    if not comment:
+        text = None
+        comment_id = None
+        timestamp = None
+        user_id = None
+    else:
+        text = comment.text
+        comment_id = comment.id
+        timestamp = comment.timestamp
+        user_id = comment.user_id
+
+    post_data = {
+        "post_object": {
+            'post_id': post.id,
+            'image': post.image,
+            'description': post.description,
+            'timestamp': post.timestamp.strftime('%Y-%m-%d %H:%M:%S'),
+            "like_count": like_count,
+            "comments_count": comments_count,
+            "Latest_comment": {
+                "comment_id": comment_id,
+                "comment": text,
+                "timestamp": timestamp,
+                "user_id": user_id
+            },
+        },
+
+        'user_object': {
+            'user_id': post.user.id,
+            "followers_count": followers_count,
+            "followings_count": followings_count,
+            "username": post.user.full_name,
+            "profile_pic": post.user.photo,
+            "facebook_id": "",
+            "instagram_id": "",
+            "tiktok_id": "",
+            "youtube_id ": "",
+
+        },
+
+    }
+
+    return jsonify({'post': post_data}), 200
 @social_media_blueprint.route('/delete_post', methods=['DELETE'])
 @jwt_required()
 def delete_post():
