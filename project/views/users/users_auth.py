@@ -938,4 +938,4 @@ def user_info():
 
 @users_auth_blueprint.route('/media/<path:filename>')
 def serve_media(filename):
-    return send_from_directory('/Flask_Six_in_one/project/media/', filename)
+    return send_from_directory('/home/ubuntu/mmmw/project/media/', filename)
