@@ -15,10 +15,11 @@ from werkzeug.utils import secure_filename
 
 from project import config
 from project.extensions.extensions import db, jwt as app_jwt
-from project.models.users import  UsersAdditionalInfo, VersionChecker, User
+from project.models.users import  UsersAdditionalInfo, VersionChecker, User, Follow
 from project.models.jwt import TokenBlocklist
 from project.views.functions.global_functions import encrypt_password, check_encrypted_password, send_email, \
     random_pin, user_info, allowed_file, verify_apple_user, send_verification_email
+
 
 users_auth_blueprint = Blueprint('users_auth', __name__)
 
@@ -899,3 +900,32 @@ def add_ratings():
             return jsonify(message="error, try again", error=str(err), category="error", status=400)
     else:
         return jsonify(message="method not allowed", category="error", status=400)
+
+@users_auth_blueprint.route('/UserInfo', methods=['GET'])
+@jwt_required()
+def user_info():
+
+    try:
+        email = current_user.email
+        user_data = User.query.filter_by(email=email).first()
+        if user_data:
+            followers_query = Follow.query.filter_by(followed_id=current_user.id)
+            followers_count = followers_query.count()
+            followings_query = Follow.query.filter_by(follower_id=current_user.id)
+            followings_count = followings_query.count()
+            user_object = {
+                "id": user_data.id,
+                "full_name": user_data.full_name,
+                "following_count": followings_count,
+                "followers_count": followers_count,
+                "profile_pic": user_data.photo,
+                "facebook_id": "",
+                "instagram_id": "",
+                "tiktok_id": "",
+                "youtube_id ": "",
+            }
+
+            return jsonify(data=user_object, category="success", status=200)
+
+    except Exception as err:
+        return jsonify(message="error, try again", error=str(err), category="error", status=400)
