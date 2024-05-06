@@ -9,7 +9,7 @@ import random
 import string
 
 from email_validator import validate_email, EmailNotValidError
-from flask import Blueprint, request, jsonify, render_template
+from flask import Blueprint, request, jsonify, render_template, send_from_directory
 from flask_jwt_extended import create_access_token, current_user, jwt_required, get_jwt
 from werkzeug.utils import secure_filename
 
@@ -933,3 +933,9 @@ def user_info():
 
     except Exception as err:
         return jsonify(message="error, try again", error=str(err), category="error", status=400)
+
+    from flask import send_from_directory
+
+@users_auth_blueprint.route('/media/<path:filename>')
+def serve_media(filename):
+    return send_from_directory('/Flask_Six_in_one/project/media/', filename)
