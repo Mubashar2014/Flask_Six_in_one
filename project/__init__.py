@@ -8,7 +8,7 @@ from flask_cors import CORS
 
 
 def create_app(config_file='config.py'):
-    app = Flask(__name__, static_url_path='/projectdia', static_folder='media')
+    app = Flask(__name__, static_url_path='/project/media', static_folder='media')
     CORS(app)
     app.config.from_pyfile(config_file)
 
