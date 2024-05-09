@@ -46,7 +46,7 @@ def create_post():
         if not image_file or not description or not timestamp:
             return jsonify({'error': 'Image, date and description are required'}), 400
 
-        timestamp = datetime.strptime(timestamp, '%Y-%m-%dT%H:%M')
+        timestamp = datetime.strptime(timestamp, '%Y-%m-%dT%H:%M:%S.%f')
 
         if image_file and allowed_file(image_file.filename):
             filename = secure_filename(image_file.filename)
@@ -66,7 +66,8 @@ def create_post():
             return jsonify({'message': 'Post created successfully', 'category': 'success', 'status': 200})
         else:
             return jsonify(
-                {'error': 'Invalid file type, allowed types are: png, jpg, jpeg, gif', 'category': 'error', 'status': 400})
+                {'error': 'Invalid file type, allowed types are: png, jpg, jpeg, gif', 'category': 'error',
+                 'status': 400})
 
     except Exception as e:
         return jsonify({'error': str(e), 'category': 'error', 'status': 400})
@@ -94,37 +95,46 @@ def get_posts():
 
             comment = Comment.query.filter_by(post_id=post.id).order_by(Comment.timestamp.desc()).first()
 
-
             like_count = Like.query.filter_by(post_id=post.id).count()
             comments_count = Comment.query.filter_by(post_id=post.id).count()
-
-
 
             if not comment:
                 text = None
                 comment_id = None
                 timestamp = None
                 user_id = None
+
+                if text is None and comment_id and timestamp and user_id is None:
+                    last_comment = None
+                else:
+                    last_comment = {
+                        "comment_id": comment_id,
+                        "comment": text,
+                        "timestamp": timestamp,
+                        "user_id": user_id
+                    }
             else:
                 text = comment.text
                 comment_id = comment.id
                 timestamp = comment.timestamp
                 user_id = comment.user_id
 
+                last_comment = {
+                    "comment_id": comment_id,
+                    "comment": text,
+                    "timestamp": timestamp,
+                    "user_id": user_id
+                }
+
             post_data = {
-                "post_object":{
+                "post_object": {
                     'post_id': post.id,
                     'image': post.image,
                     'description': post.description,
                     'timestamp': post.timestamp.strftime('%Y-%m-%d %H:%M:%S'),
                     "like_count": like_count,
                     "comments_count": comments_count,
-                    "Latest_comment": {
-                        "comment_id": comment_id,
-                        "comment": text,
-                        "timestamp": timestamp,
-                        "user_id": user_id
-                    },
+                    "Latest_comment": last_comment,
                 },
 
                 'user_object': {
@@ -138,10 +148,7 @@ def get_posts():
                     "tiktok_id": "",
                     "youtube_id ": "",
 
-
-
                 },
-
 
             }
             posts_data.append(post_data)
@@ -151,6 +158,7 @@ def get_posts():
 
     except Exception as e:
         return jsonify({'error': str(e)}), 404
+
 
 @social_media_blueprint.route('/get_post', methods=['GET'])
 @jwt_required()
@@ -213,6 +221,8 @@ def get_post():
     }
 
     return jsonify({'post': post_data}), 200
+
+
 @social_media_blueprint.route('/delete_post', methods=['DELETE'])
 @jwt_required()
 def delete_post():
@@ -381,7 +391,8 @@ def create_comment():
     return jsonify({'message': 'Comment created successfully'})
 
 
-@social_media_blueprint.route('/get_comments/', methods=['GET'])
+@social_media_blueprint.route('/get_comments', methods=['GET'])
+@jwt_required()
 def get_comments():
     post_id = request.args.get('post_id')
     post = Post.query.get(post_id)
@@ -393,9 +404,39 @@ def get_comments():
     comments_count = comments_query.count()
 
     comments = comments_query.all()
-    comments_data = [
-        {'id': comment.id, 'text': comment.text, 'user_id': comment.user_id, 'timestamp': comment.timestamp} for comment
-        in comments]
+
+    comments_data = []
+
+    for comment in comments:
+        followers_query = Follow.query.filter_by(followed_id=post.user_id)
+        followers_count = followers_query.count()
+        followings_query = Follow.query.filter_by(follower_id=post.user_id)
+        followings_count = followings_query.count()
+
+        comment_data = {
+            'comment_object': {
+                'comment_id': comment.id,
+                'username': post.user.full_name,
+                'photo': post.user.photo,
+                'text': comment.text,
+                'user_id': comment.user_id,
+                'timestamp': comment.timestamp
+            },
+            'user_object': {
+                'user_id': comment.user_id,
+                "followers_count": followers_count,
+                "followings_count": followings_count,
+                "username": post.user.full_name,
+                "profile_pic": post.user.photo,
+                "facebook_id": "",
+                "instagram_id": "",
+                "tiktok_id": "",
+                "youtube_id ": "",
+
+            },
+        }
+        comments_data.append(comment_data)
+
     socketio.emit('comment_count_updated', {'user_id': current_user.id, 'comments_count': comments_count},
                   namespace='/social_media')
     return jsonify({'comments': comments_data, 'comments_count': comments_count})
@@ -500,7 +541,84 @@ def get_likes():
     return jsonify({'likes_count': likes_count})
 
 
-@social_media_blueprint.route('/abc', methods=['POST'])
+@social_media_blueprint.route('/otherUserPosts', methods=['GET'])
 @jwt_required()
-def abc():
-    return jsonify({'message': 'abc'})
+def otherUserPosts():
+    user_id = request.args.get('user_id')
+    posts = Post.query.filter_by(user_id=user_id).all()
+
+    if not posts:
+        return jsonify({'error': 'No posts found'}), 404
+
+    posts_data = []
+    for post in posts:
+        followers_query = Follow.query.filter_by(followed_id=post.user_id)
+        followers_count = followers_query.count()
+        followings_query = Follow.query.filter_by(follower_id=post.user_id)
+        followings_count = followings_query.count()
+
+        comment = Comment.query.filter_by(post_id=post.id).order_by(Comment.timestamp.desc()).first()
+
+        like_count = Like.query.filter_by(post_id=post.id).count()
+        comments_count = Comment.query.filter_by(post_id=post.id).count()
+
+        if not comment:
+            text = None
+            comment_id = None
+            timestamp = None
+            user_id = None
+
+            if text is None and comment_id and timestamp and user_id is None:
+                last_comment = None
+            else:
+                last_comment = {
+                    "comment_id": comment_id,
+                    "comment": text,
+                    "timestamp": timestamp,
+                    "user_id": user_id
+                }
+        else:
+            text = comment.text
+            comment_id = comment.id
+            timestamp = comment.timestamp
+            user_id = comment.user_id
+
+            last_comment = {
+                "comment_id": comment_id,
+                "comment": text,
+                "timestamp": timestamp,
+                "user_id": user_id
+            }
+
+        post_data = {
+            "post_object": {
+                'post_id': post.id,
+                'image': post.image,
+                'description': post.description,
+                'timestamp': post.timestamp.strftime('%Y-%m-%d %H:%M:%S'),
+                "like_count": like_count,
+                "comments_count": comments_count,
+                "Latest_comment": last_comment,
+            },
+
+            'user_object': {
+                'user_id': post.user.id,
+                "followers_count": followers_count,
+                "followings_count": followings_count,
+                "username": post.user.full_name,
+                "profile_pic": post.user.photo,
+                "facebook_id": "",
+                "instagram_id": "",
+                "tiktok_id": "",
+                "youtube_id ": "",
+
+            },
+
+        }
+        posts_data.append(post_data)
+
+    socketio.emit('get_other_user_posts', {'user_id': current_user.id}, namespace='/social_media')
+    return jsonify({'posts': posts_data}), 200
+
+
+
