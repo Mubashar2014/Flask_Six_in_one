@@ -11,59 +11,46 @@ from project.extensions.extensions import socketio
 from project.config import ALLOWED_EXTENSIONS
 from project.extensions.extensions import db
 from project.models.users import User, Post, Follow, Comment, Like
+import boto3
+from botocore.exceptions import NoCredentialsError
+import os
 
 social_media_blueprint = Blueprint('social_media', __name__)
 
+
+
+
+s3 = boto3.client('s3', aws_access_key_id='AKIAQ3EGSPOPBDCVB6A3', aws_secret_access_key='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')
 
 @social_media_blueprint.route('/create_post', methods=['POST'])
 @jwt_required()
 @swag_from('swagger/create_post.yml')  # Add this line to specify the Swagger YAML file
 def create_post():
-    """
-    Endpoint to create a new post.
-
-    ---
-    parameters:
-      - name: image
-        in: formData
-        type: file
-        required: true
-        description: The image file for the post.
-      - name: description
-        in: formData
-        type: string
-        required: true
-        description: The description for the post.
-    responses:
-      200:
-        description: Post created successfully.
-    """
     try:
         image_file = request.files.get('image')
         description = request.form.get('description')
         timestamp = request.form.get('timestamp')
 
         if not image_file or not description or not timestamp:
-            return jsonify({'error': 'Image, date and description are required'}), 400
+            return jsonify({'error': 'Image, date, and description are required'}), 400
 
         timestamp = datetime.strptime(timestamp, '%Y-%m-%dT%H:%M:%S.%f')
 
         if image_file and allowed_file(image_file.filename):
-            filename = secure_filename(image_file.filename)
-            file_ext = filename.rsplit('.', 1)[1].lower()
-            unique_filename = str(uuid.uuid4()) + '.' + file_ext
-            filepath = os.path.join('project/media/posts', unique_filename)
-            image_file.save(filepath)
-            image_data = filepath
+            try:
+                s3.upload_fileobj(image_file, 'flask6in1', image_file.filename)
+                image_url = f"https://flask6in1.s3.amazonaws.com/{image_file.filename}"
 
-            user = User.query.filter_by(id=current_user.id).first()
-            new_post = Post(image=image_data, description=description, user_id=current_user.id, timestamp=timestamp)
+                user = User.query.filter_by(id=current_user.id).first()
+                new_post = Post(image=image_url, description=description, user_id=current_user.id, timestamp=timestamp)
 
-            db.session.add(new_post)
-            db.session.commit()
+                db.session.add(new_post)
+                db.session.commit()
 
-            socketio.emit('New post', {'user_id': current_user.id}, namespace='/social_media')
-            return jsonify({'message': 'Post created successfully', 'category': 'success', 'status': 200})
+                socketio.emit('New post', {'user_id': current_user.id}, namespace='/social_media')
+                return jsonify({'message': 'Post created successfully', 'category': 'success', 'status': 200})
+            except NoCredentialsError:
+                return jsonify({'error': 'Credentials not available', 'category': 'error', 'status': 400})
         else:
             return jsonify(
                 {'error': 'Invalid file type, allowed types are: png, jpg, jpeg, gif', 'category': 'error',
@@ -71,6 +58,7 @@ def create_post():
 
     except Exception as e:
         return jsonify({'error': str(e), 'category': 'error', 'status': 400})
+
 
 
 def allowed_file(filename):
