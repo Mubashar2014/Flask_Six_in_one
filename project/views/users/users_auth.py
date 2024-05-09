@@ -395,15 +395,15 @@ def user_login():
 
         user_data = User.query.filter_by(email=email).first()
         if user_data:
-            followers_query = Follow.query.filter_by(followed_id=current_user.id)
-            followers_count = followers_query.count()
-            followings_query = Follow.query.filter_by(follower_id=current_user.id)
-            followings_count = followings_query.count()
+           # followers_query = Follow.query.filter_by(followed_id=current_user.id)
+           # followers_count = followers_query.count()
+           # followings_query = Follow.query.filter_by(follower_id=current_user.id)
+           # followings_count = followings_query.count()
             user_object = {
                 "id": user_data.id,
                 "full_name": user_data.full_name,
-                "following_count": followings_count,
-                "followers_count": followers_count,
+                "following_count": 0,
+                "followers_count": 0,
                 "profile_pic": user_data.photo,
                 "facebook_id": "",
                 "instagram_id": "",
@@ -918,9 +918,9 @@ def user_info():
             followings_query = Follow.query.filter_by(follower_id=current_user.id)
             followings_count = followings_query.count()
             user_object = {
-                "id": user_data.id,
-                "full_name": user_data.full_name,
-                "following_count": followings_count,
+                "user_id": user_data.id,
+                "username": user_data.full_name,
+                "followings_count": followings_count,
                 "followers_count": followers_count,
                 "profile_pic": user_data.photo,
                 "facebook_id": "",
