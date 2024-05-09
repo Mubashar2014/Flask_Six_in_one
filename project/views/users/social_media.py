@@ -20,7 +20,7 @@ social_media_blueprint = Blueprint('social_media', __name__)
 
 
 
-s3 = boto3.client('s3', aws_access_key_id='AKIAQ3EGSPOPBDCVB6A3', aws_secret_access_key='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')
+s3 = boto3.client('s3', aws_access_key_id='AKIAQ3EGSPOPKKCGD2HR', aws_secret_access_key='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')
 
 @social_media_blueprint.route('/create_post', methods=['POST'])
 @jwt_required()
