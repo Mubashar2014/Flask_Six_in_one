@@ -41,7 +41,7 @@ def create_post():
                 s3.upload_fileobj(image_file, 'flask6in1', image_file.filename)
                 image_url = f"https://flask6in1.s3.amazonaws.com/{image_file.filename}"
 
-                user = User.query.filter_by(id=current_user.id).first()
+
                 new_post = Post(image=image_url, description=description, user_id=current_user.id, timestamp=timestamp)
 
                 db.session.add(new_post)
@@ -220,10 +220,14 @@ def delete_post():
     if not post:
         return jsonify({'error': 'Post not found or you do not have permission to delete it'}), 404
 
-    db.session.delete(post)
-    db.session.commit()
-    socketio.emit('Post Deleted', {'user_id': current_user.id}, namespace='/social_media')
-    return jsonify({'message': 'Post deleted successfully'})
+    try:
+        db.session.delete(post)
+        db.session.commit()
+        socketio.emit('Post Deleted', {'user_id': current_user.id}, namespace='/social_media')
+        return jsonify({'message': 'Post deleted successfully'})
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
 
 
 @social_media_blueprint.route('/edit_post', methods=['PUT'])
@@ -363,6 +367,12 @@ def get_followings():
 def create_comment():
     post_id = request.form.get('post_id')
     post = Post.query.get(post_id)
+    timestamp = request.form.get('timestamp')
+
+    if not timestamp:
+        return jsonify({'error': 'Timestamp is required'}), 400
+
+    timestamp = datetime.strptime(timestamp, '%Y-%m-%dT%H:%M:%S.%f')
 
     if not post:
         return jsonify({'error': 'Post not found'}), 404
@@ -372,7 +382,7 @@ def create_comment():
     if not text:
         return jsonify({'error': 'Comment text is required'}), 400
 
-    new_comment = Comment(text=text, user_id=current_user.id, post_id=post_id, timestamp=datetime.now())
+    new_comment = Comment(text=text, user_id=current_user.id, post_id=post_id, timestamp=timestamp)
     db.session.add(new_comment)
     db.session.commit()
 
