@@ -80,7 +80,7 @@ class Follow(db.Model):
 
 class Product(db.Model):
     id = db.Column(db.Integer, primary_key=True)
-    image = db.Column(db.LargeBinary, nullable=False)
+    image = db.Column(db.String(1000), nullable=False)
     name = db.Column(db.String(255), nullable=False)
     description = db.Column(db.Text)
     price = db.Column(db.String(255), nullable=False)
