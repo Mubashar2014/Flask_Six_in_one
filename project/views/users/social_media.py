@@ -122,7 +122,22 @@ def get_posts():
                     'timestamp': post.timestamp.strftime('%Y-%m-%d %H:%M:%S'),
                     "like_count": like_count,
                     "comments_count": comments_count,
-                    "Latest_comment": last_comment,
+                    "latest_comment": {
+                            "comment_object":last_comment,
+                            'user_object': {
+                    "user_id": post.user.id,
+                    "followers_count": followers_count,
+                    "followings_count": followings_count,
+                    "username": post.user.full_name,
+                    "profile_pic": post.user.photo,
+                    "facebook_id": "",
+                    "instagram_id": "",
+                    "tiktok_id": "",
+                    "youtube_id ": "",
+
+                },
+                        
+                    }
                 },
 
                 'user_object': {
