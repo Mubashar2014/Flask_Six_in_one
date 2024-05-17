@@ -215,7 +215,7 @@ def get_post():
 @jwt_required()
 def delete_post():
     post_id = request.form.get('post_id')
-    post = Post.query.filter_by(id=post_id, user_id=current_user.id).first()
+    post = Post.query.filter_by(id=int(post_id), user_id=current_user.id).first()
 
     if not post:
         return jsonify({'error': 'Post not found or you do not have permission to delete it'}), 404
