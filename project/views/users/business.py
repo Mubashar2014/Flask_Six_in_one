@@ -6,16 +6,16 @@ from flask import Blueprint, request, jsonify
 from flask_jwt_extended import jwt_required, current_user
 from sqlalchemy import func, desc
 from werkzeug.utils import secure_filename
-
+from flask_socketio import emit
 from project.config import CV_FOLDER
 from project.extensions.extensions import db
 from project.models.users import Feed, Like_feed, Comment_feed, Job, JobLike, JobComment, JobApplication, Event, \
     EventLike, EventComment, UserExperience, UserPortfolio, User
 
+# Initialize blueprint
 business_bp = Blueprint('business', __name__)
 
-
-
+# Route to create a new feed
 @business_bp.route('/create_feed', methods=['POST'])
 @jwt_required()
 def create_feed():
@@ -30,12 +30,17 @@ def create_feed():
     else:
         image = None
 
-    new_feed = Feed(content=content, image=image if image else None, user=current_user)
+    new_feed = Feed(content=content, image=image, user=current_user)
     db.session.add(new_feed)
     db.session.commit()
 
+    # Emit a Socket.IO event to notify clients
+    emit('new_feed', {'event': 'new_feed', 'id': new_feed.id, 'content': new_feed.content, 'user_id': new_feed.user_id},
+         broadcast=True)
+
     return jsonify({'message': 'Feed created successfully'}), 200
 
+# Route to get feed details
 @business_bp.route('/feed_details', methods=['GET'])
 @jwt_required()
 def get_feed_details():
@@ -50,37 +55,7 @@ def get_feed_details():
 
     return jsonify({'like_count': like_count, 'comment_count': comment_count}), 200
 
-
-@business_bp.route('/edit_feed', methods=['PUT'])
-@jwt_required()
-def edit_feed():
-    feed_id = request.form.get('feed_id')
-    feed = Feed.query.get(feed_id)
-
-    if not feed:
-        return jsonify({'error': 'Feed not found'}), 404
-
-    if feed.user_id != current_user.id:
-        return jsonify({'error': 'You are not authorized to edit this feed'}), 403
-
-    content = request.form.get('content')
-    image = request.files.get('image')
-
-    if not content:
-        return jsonify({'error': 'Content is required'}), 400
-
-    if image:
-        image = image.read()
-    else:
-        image = None
-
-    feed.content = content
-    feed.image = image if image else None
-    db.session.commit()
-
-    return jsonify({'message': 'Feed edited successfully'})
-
-# Like Feed
+# Route to like a feed
 @business_bp.route('/like_feed', methods=['POST'])
 @jwt_required()
 def like_feed():
@@ -99,9 +74,12 @@ def like_feed():
     db.session.add(new_like)
     db.session.commit()
 
+    # Emit a Socket.IO event to notify clients
+    emit('feed_liked', {'feed_id': feed_id, 'user_id': current_user.id}, broadcast=True)
+
     return jsonify({'message': 'Feed liked successfully'})
 
-# Comment on Feed
+# Route to comment on a feed
 @business_bp.route('/comment_feed', methods=['POST'])
 @jwt_required()
 def comment_feed():
@@ -120,7 +98,11 @@ def comment_feed():
     db.session.add(new_comment)
     db.session.commit()
 
+    # Emit a Socket.IO event to notify clients
+    emit('feed_commented', {'feed_id': feed_id, 'user_id': current_user.id, 'text': text}, broadcast=True)
+
     return jsonify({'message': 'Comment added successfully'})
+
 
 # Get Feed Comments
 @business_bp.route('/feed_comments', methods=['GET'])

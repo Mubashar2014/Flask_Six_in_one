@@ -10,7 +10,7 @@ from werkzeug.utils import secure_filename
 from project.extensions.extensions import db
 from project.models.users import User, Product, Favourite
 
-from Flask_Six_in_one.project.models.users import Follow
+from project.models.users import Follow
 
 s3 = boto3.client('s3', aws_access_key_id='AKIAQ3EGSPOPKKCGD2HR',
                   aws_secret_access_key='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')

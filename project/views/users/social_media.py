@@ -5,6 +5,7 @@ from datetime import datetime
 from flasgger import swag_from
 from flask import Blueprint, request, jsonify, render_template
 from flask_jwt_extended import jwt_required, current_user
+from flask_socketio import emit
 from werkzeug.utils import secure_filename
 
 from project.extensions.extensions import socketio
@@ -47,7 +48,8 @@ def create_post():
                 db.session.add(new_post)
                 db.session.commit()
 
-                socketio.emit('New post', {'user_id': current_user.id}, namespace='/social_media')
+                emit('New post', {'user_id': current_user.id}, broadcast=True)
+
                 return jsonify({'message': 'Post created successfully', 'category': 'success', 'status': 200})
             except NoCredentialsError:
                 return jsonify({'error': 'Credentials not available', 'category': 'error', 'status': 400})
@@ -141,7 +143,7 @@ def get_posts():
             }
             posts_data.append(post_data)
 
-        socketio.emit('get_posts', {'user_id': current_user.id}, namespace='/social_media')
+        emit('get_posts', {'user_id': current_user.id}, broadcast=True)
         return jsonify({'posts': posts_data}), 200
 
     except Exception as e:
@@ -223,7 +225,7 @@ def delete_post():
     try:
         db.session.delete(post)
         db.session.commit()
-        socketio.emit('Post Deleted', {'user_id': current_user.id}, namespace='/social_media')
+        emit('Post Deleted', {'user_id': current_user.id}, broadcast=True)
         return jsonify({'message': 'Post deleted successfully'})
     except Exception as e:
         return jsonify({'error': str(e)}), 500
@@ -261,7 +263,7 @@ def edit_post():
 
     post.timestamp = datetime.now()
     db.session.commit()
-    socketio.emit('Post Edited', {'user_id': current_user.id}, namespace='/social_media')
+    emit('Post Edited', {'user_id': current_user.id}, broadcast=True)
     return jsonify({'message': 'Post edited successfully'})
 
 
@@ -283,13 +285,13 @@ def follow_user():
     if existing_follow:
         db.session.delete(existing_follow)
         db.session.commit()
-        socketio.emit('follow_count_updated', {'user_id': current_user.id}, namespace='/social_media')
+        emit('follow_count_updated', {'user_id': current_user.id}, broadcast=True)
         return jsonify({'message': f'You have unfollowed {user_to_follow.full_name}'}), 200
 
     new_follow = Follow(follower_id=current_user.id, followed_id=user_id, timestamp=datetime.now())
     db.session.add(new_follow)
     db.session.commit()
-    socketio.emit('follow_count_updated', {'user_id': current_user.id}, namespace='/social_media')
+    emit('follow_count_updated', {'user_id': current_user.id}, broadcast=True)
     return jsonify({'message': f'You are now following {user_to_follow.full_name}'}), 200
 
 
@@ -336,8 +338,8 @@ def get_followers():
     followers = followers_query.all()
     followers_data = [{'id': follower.follower.id, 'full_name': follower.follower.full_name} for follower in followers]
 
-    socketio.emit('followers_count_updated', {'user_id': user_id, 'followers_count': followers_count},
-                  namespace='/social_media')
+    emit('followers_count_updated', {'user_id': user_id, 'followers_count': followers_count},
+                  broadcast=True)
 
     return jsonify({'followers': followers_data, 'followers_count': followers_count})
 
