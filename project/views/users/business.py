@@ -8,7 +8,7 @@ from sqlalchemy import func, desc
 from werkzeug.utils import secure_filename
 from flask_socketio import emit
 from project.config import CV_FOLDER
-from project.extensions.extensions import db
+from project.extensions.extensions import db, socketio
 from project.models.users import Feed, Like_feed, Comment_feed, Job, JobLike, JobComment, JobApplication, Event, \
     EventLike, EventComment, UserExperience, UserPortfolio, User
 
@@ -35,8 +35,7 @@ def create_feed():
     db.session.commit()
 
     # Emit a Socket.IO event to notify clients
-    emit('new_feed', {'event': 'new_feed', 'id': new_feed.id, 'content': new_feed.content, 'user_id': new_feed.user_id},
-         broadcast=True)
+    socketio.emit('new_feed', {'event': 'new_feed', 'id': new_feed.id, 'content': new_feed.content, 'user_id': new_feed.user_id},namespace='/business')
 
     return jsonify({'message': 'Feed created successfully'}), 200
 
@@ -75,7 +74,7 @@ def like_feed():
     db.session.commit()
 
     # Emit a Socket.IO event to notify clients
-    emit('feed_liked', {'feed_id': feed_id, 'user_id': current_user.id}, broadcast=True)
+    emit('feed_liked', {'feed_id': feed_id, 'user_id': current_user.id}, namespace='/business')
 
     return jsonify({'message': 'Feed liked successfully'})
 
@@ -99,7 +98,7 @@ def comment_feed():
     db.session.commit()
 
     # Emit a Socket.IO event to notify clients
-    emit('feed_commented', {'feed_id': feed_id, 'user_id': current_user.id, 'text': text}, broadcast=True)
+    emit('feed_commented', {'feed_id': feed_id, 'user_id': current_user.id, 'text': text},namespace='/business')
 
     return jsonify({'message': 'Comment added successfully'})
 
