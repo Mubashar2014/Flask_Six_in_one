@@ -52,8 +52,8 @@ class Post(db.Model):
     image = db.Column(db.Text, nullable=False)
     description = db.Column(db.Text)
     user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
-    comments = db.relationship('Comment', backref='post', lazy=True)
-    likes = db.relationship('Like', backref='post', lazy=True)
+    comments = db.relationship('Comment', backref='post', lazy=True, cascade='all, delete-orphan')
+    likes = db.relationship('Like', backref='post', lazy=True, cascade='all, delete-orphan')
     timestamp = db.Column(db.DateTime, default=datetime.datetime.now(), nullable=False)
 
 class Comment(db.Model):
@@ -69,6 +69,7 @@ class Like(db.Model):
     post_id = db.Column(db.Integer, db.ForeignKey('post.id'), nullable=False)
     timestamp = db.Column(db.DateTime, default=datetime.datetime.now(), nullable=False)
 
+
 class Follow(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     follower_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
@@ -80,7 +81,7 @@ class Follow(db.Model):
 
 class Product(db.Model):
     id = db.Column(db.Integer, primary_key=True)
-    image = db.Column(db.LargeBinary, nullable=False)
+    image = db.Column(db.String(1000), nullable=False)
     name = db.Column(db.String(255), nullable=False)
     description = db.Column(db.Text)
     price = db.Column(db.String(255), nullable=False)

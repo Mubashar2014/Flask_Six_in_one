@@ -124,7 +124,22 @@ def get_posts():
                     'timestamp': post.timestamp.strftime('%Y-%m-%d %H:%M:%S'),
                     "like_count": like_count,
                     "comments_count": comments_count,
-                    "Latest_comment": last_comment,
+                    "latest_comment": {
+                            "comment_object":last_comment,
+                            'user_object': {
+                    "user_id": post.user.id,
+                    "followers_count": followers_count,
+                    "followings_count": followings_count,
+                    "username": post.user.full_name,
+                    "profile_pic": post.user.photo,
+                    "facebook_id": "",
+                    "instagram_id": "",
+                    "tiktok_id": "",
+                    "youtube_id ": "",
+
+                },
+                        
+                    }
                 },
 
                 'user_object': {
@@ -187,12 +202,27 @@ def get_post():
             'timestamp': post.timestamp.strftime('%Y-%m-%d %H:%M:%S'),
             "like_count": like_count,
             "comments_count": comments_count,
-            "Latest_comment": {
+             "latest_comment": {
+                            "comment_object":{
                 "comment_id": comment_id,
                 "comment": text,
                 "timestamp": timestamp,
                 "user_id": user_id
             },
+                            'user_object': {
+                    "user_id": post.user.id,
+                    "followers_count": followers_count,
+                    "followings_count": followings_count,
+                    "username": post.user.full_name,
+                    "profile_pic": post.user.photo,
+                    "facebook_id": "",
+                    "instagram_id": "",
+                    "tiktok_id": "",
+                    "youtube_id ": "",
+
+                },
+                        
+                    }
         },
 
         'user_object': {
@@ -217,7 +247,7 @@ def get_post():
 @jwt_required()
 def delete_post():
     post_id = request.form.get('post_id')
-    post = Post.query.filter_by(id=post_id, user_id=current_user.id).first()
+    post = Post.query.filter_by(id=int(post_id), user_id=current_user.id).first()
 
     if not post:
         return jsonify({'error': 'Post not found or you do not have permission to delete it'}), 404
