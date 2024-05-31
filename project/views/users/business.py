@@ -57,7 +57,7 @@ def create_feed():
 @jwt_required()
 def get_feed_details():
     feed_id = request.args.get('feed_id')
-    feed = Feed.query.get(feed_id)
+    feed = Feed.query.get(id=feed_id)
 
     if not feed:
         return jsonify({'error': 'Feed not found'}), 404
@@ -183,7 +183,7 @@ def get_feeds():
             'timestamp': feed.timestamp,
             'likes_count': len(feed.likes),
             'comments_count': len(feed.comments),
-            'image': base64.b64encode(feed.image).decode('utf-8')
+            'image': feed.image
 
         } for feed in feeds.items
     ]
