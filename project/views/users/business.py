@@ -177,6 +177,7 @@ def get_feeds():
 
     feeds_data = [
         {
+            'feed_object':{
             'id': feed.id,
             'content': feed.content,
             'user_id': feed.user_id,
@@ -184,7 +185,10 @@ def get_feeds():
             'likes_count': len(feed.likes),
             'comments_count': len(feed.comments),
             'image': feed.image
-
+            },
+            'user_object':{
+                
+            }
         } for feed in feeds.items
     ]
 
