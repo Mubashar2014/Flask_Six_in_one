@@ -104,13 +104,11 @@ class UsersAdditionalInfo(db.Model):
     followers = db.Column(db.Integer)
     following = db.Column(db.Integer)
     posts = db.Column(db.Integer, default=0)
-
-
 # Business Module
 class Feed(db.Model):
     id = db.Column(db.Integer, primary_key=True)
-    content = db.Column(db.Text, nullable=False)
-    image = db.Column(db.LargeBinary, nullable=True)
+    content = db.Column(db.Text, nullable=True)
+    image = db.Column(db.String(1000), nullable=True)
     user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
     timestamp = db.Column(db.DateTime, default=datetime.datetime.now(), nullable=False)
     pinned = db.Column(db.Boolean, default=False)

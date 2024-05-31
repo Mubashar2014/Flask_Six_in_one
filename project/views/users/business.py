@@ -12,6 +12,15 @@ from project.extensions.extensions import db, socketio
 from project.models.users import Feed, Like_feed, Comment_feed, Job, JobLike, JobComment, JobApplication, Event, \
     EventLike, EventComment, UserExperience, UserPortfolio, User
 
+import boto3
+from botocore.exceptions import NoCredentialsError
+import os
+
+from project.views.functions.global_functions import allowed_file
+
+s3 = boto3.client('s3', aws_access_key_id='AKIAQ3EGSPOPKKCGD2HR', aws_secret_access_key='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')
+
+
 # Initialize blueprint
 business_bp = Blueprint('business', __name__)
 
@@ -20,24 +29,28 @@ business_bp = Blueprint('business', __name__)
 @jwt_required()
 def create_feed():
     content = request.form.get('content')
-    image = request.files.get('image')
+    image_file = request.files.get('image')
 
     if not content:
         return jsonify({'error': 'Content is required'}), 400
 
-    if image:
-        image = image.read()
-    else:
-        image = None
+    if image_file and allowed_file(image_file.filename):
+        try:
+            s3.upload_fileobj(image_file, 'flask6in1', image_file.filename)
+            image_url = f"https://flask6in1.s3.amazonaws.com/{image_file.filename}"
 
-    new_feed = Feed(content=content, image=image, user=current_user)
-    db.session.add(new_feed)
-    db.session.commit()
+            new_feed = Feed(content=content, image=image_url, user=current_user)
+            db.session.add(new_feed)
+            db.session.commit()
 
-    # Emit a Socket.IO event to notify clients
-    socketio.emit('new_feed', {'event': 'new_feed', 'id': new_feed.id, 'content': new_feed.content, 'user_id': new_feed.user_id},namespace='/business')
+            socketio.emit('new_feed', {'event': 'new_feed', 'id': new_feed.id, 'content': new_feed.content,
+                                       'user_id': new_feed.user_id}, namespace='/business')
 
-    return jsonify({'message': 'Feed created successfully'}), 200
+            return jsonify({'message': 'Feed created successfully'}), 200
+        except NoCredentialsError:
+            return jsonify({'error': 'Credentials not available', 'category': 'error', 'status': 400})
+
+
 
 # Route to get feed details
 @business_bp.route('/feed_details', methods=['GET'])
@@ -74,7 +87,7 @@ def like_feed():
     db.session.commit()
 
     # Emit a Socket.IO event to notify clients
-    emit('feed_liked', {'feed_id': feed_id, 'user_id': current_user.id}, namespace='/business')
+    emit('feed_liked', {'feed_id': feed_id, 'user_id': current_user.id},namespace='/business')
 
     return jsonify({'message': 'Feed liked successfully'})
 
@@ -98,7 +111,7 @@ def comment_feed():
     db.session.commit()
 
     # Emit a Socket.IO event to notify clients
-    emit('feed_commented', {'feed_id': feed_id, 'user_id': current_user.id, 'text': text},namespace='/business')
+    emit('feed_commented', {'feed_id': feed_id, 'user_id': current_user.id, 'text': text}, broadcast=True,namespace='/business')
 
     return jsonify({'message': 'Comment added successfully'})
 
