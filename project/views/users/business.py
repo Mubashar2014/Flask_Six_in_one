@@ -57,7 +57,7 @@ def create_feed():
 @jwt_required()
 def get_feed_details():
     feed_id = request.args.get('feed_id')
-    feed = Feed.query.get(id=feed_id)
+    feed = Feed.query.filter_by(id=feed_id).first()
 
     if not feed:
         return jsonify({'error': 'Feed not found'}), 404
