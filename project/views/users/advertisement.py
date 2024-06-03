@@ -9,6 +9,16 @@ from project.config import CV_FOLDER, ad_FOLDER
 from project.extensions.extensions import db
 from project.models.users import Ad, AdClick
 
+
+import boto3
+from botocore.exceptions import NoCredentialsError
+import os
+
+from project.views.functions.global_functions import allowed_file
+
+s3 = boto3.client('s3', aws_access_key_id='AKIAQ3EGSPOPKKCGD2HR',
+                  aws_secret_access_key='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')
+
 advertisement_bp = Blueprint('advertisement', __name__)
 
 @advertisement_bp.route('/create_ad', methods=['POST'])
@@ -42,28 +52,35 @@ def create_ad():
     if not title or not description or not media or not age_from or not age_to or not gender or not city:
         return jsonify({'error': 'All fields are required'}), 400
 
-    ad_filename = str(user_id)+'_'+secure_filename(media.filename)
-    ad_path = os.path.join(ad_FOLDER, ad_filename)
-    media.save(ad_path)
 
-    new_ad = Ad(
-        title=title,
-        description=description,
-        media_link=ad_path,
-        age_from=age_from,
-        age_to=age_to,
-        gender=gender,
-        city=city,
-        start_date=start_date,
-        end_date=end_date,
-        user_id=user_id,
-        timestamp=timestamp
-    )
+    try:
+        if media and allowed_file(media.filename):
+            s3.upload_fileobj(media, 'flask6in1', media.filename)
+            image_url = f"https://flask6in1.s3.amazonaws.com/{media.filename}"
+        else:
+            return jsonify({'error': 'Invalid media file'}), 400
 
-    db.session.add(new_ad)
-    db.session.commit()
+        new_ad = Ad(
+            title=title,
+            description=description,
+            media_link=image_url,
+            age_from=age_from,
+            age_to=age_to,
+            gender=gender,
+            city=city,
+            start_date=start_date,
+            end_date=end_date,
+            user_id=user_id,
+            timestamp=timestamp
+        )
 
-    return jsonify({'message': 'Ad created successfully'})
+        db.session.add(new_ad)
+        db.session.commit()
+
+        return jsonify({'message': 'Ad created successfully'})
+
+    except Exception as e:
+        return jsonify({'message': str(e)}), 500
 
 
 @advertisement_bp.route('/click_ad', methods=['POST'])

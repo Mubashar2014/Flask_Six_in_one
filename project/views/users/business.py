@@ -448,15 +448,27 @@ def get_events():
     events = Event.query.all()
     events_data = [
         {
-            'id': event.id,
-            'title': event.title,
-            'description': event.description,
-            'location': event.location,
-            'charges': event.charges,
-            'user_id': event.user_id,
-            'timestamp': event.timestamp,
-            'likes_count': len(event.likes),
-            'comments_count': len(event.comments)
+           'event_object' :{'id': event.id,
+             'title': event.title,
+             'description': event.description,
+             'location': event.location,
+             'charges': event.charges,
+             'user_id': event.user_id,
+             'timestamp': event.timestamp,
+             'likes_count': len(event.likes),
+             'comments_count': len(event.comments)},
+            'user_object' : {
+                "user_id": event.user.id,
+                "followers_count": Follow.query.filter_by(followed_id=event.user_id).count(),
+                "followings_count": Follow.query.filter_by(follower_id=event.user_id).count(),
+                "username": event.user.full_name,
+                "profile_pic": event.user.photo,
+                "facebook_id": "",
+                "instagram_id": "",
+                "tiktok_id": "",
+                "youtube_id ": "",
+            }
+
         } for event in events
     ]
 

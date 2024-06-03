@@ -27,7 +27,7 @@ JWT_ACCESS_TOKEN_EXPIRES = "ACCESS_EXPIRES"
 UPLOAD_FOLDER = 'project/media/uploaded_photos/'
 CV_FOLDER = 'project/media/cv_uploads/'
 ad_FOLDER = 'project/media/ad_uploads/'
-ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg'}
+ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg','mp4','mp3'}
 
 SQLALCHEMY_MAX_CONNECTIONS = 100000
 MAX_CONNECTIONS = 100000
