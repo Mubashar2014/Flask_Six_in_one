@@ -27,6 +27,8 @@ class User(db.Model):
     ratings = db.Column(db.Boolean, default=False)
     posts = db.relationship('Post', backref='user', lazy=True)
     feed = db.relationship('Feed', backref='user', lazy=True)
+    jobs = db.relationship('Job', backref='user', lazy=True)
+    events = db.relationship('Event', backref='user', lazy=True)
     about = db.Column(db.Text)
     followers = db.relationship('Follow', foreign_keys='Follow.followed_id', backref='followed', lazy='dynamic')
     followings = db.relationship('Follow', foreign_keys='Follow.follower_id', backref='follower', lazy='dynamic')
