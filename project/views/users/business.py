@@ -18,11 +18,12 @@ import os
 
 from project.views.functions.global_functions import allowed_file
 
-s3 = boto3.client('s3', aws_access_key_id='AKIAQ3EGSPOPKKCGD2HR', aws_secret_access_key='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')
-
+s3 = boto3.client('s3', aws_access_key_id='AKIAQ3EGSPOPKKCGD2HR',
+                  aws_secret_access_key='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')
 
 # Initialize blueprint
 business_bp = Blueprint('business', __name__)
+
 
 # Route to create a new feed
 @business_bp.route('/create_feed', methods=['POST'])
@@ -51,7 +52,6 @@ def create_feed():
             return jsonify({'error': 'Credentials not available', 'category': 'error', 'status': 400})
 
 
-
 # Route to get feed details
 @business_bp.route('/feed_details', methods=['GET'])
 @jwt_required()
@@ -66,6 +66,7 @@ def get_feed_details():
     comment_count = db.session.query(func.count(Comment_feed.id)).filter_by(feed_id=feed.id).scalar()
 
     return jsonify({'like_count': like_count, 'comment_count': comment_count}), 200
+
 
 # Route to like a feed
 @business_bp.route('/like_feed', methods=['POST'])
@@ -87,9 +88,10 @@ def like_feed():
     db.session.commit()
 
     # Emit a Socket.IO event to notify clients
-    emit('feed_liked', {'feed_id': feed_id, 'user_id': current_user.id},namespace='/business')
+    emit('feed_liked', {'feed_id': feed_id, 'user_id': current_user.id}, namespace='/business')
 
     return jsonify({'message': 'Feed liked successfully'})
+
 
 # Route to comment on a feed
 @business_bp.route('/comment_feed', methods=['POST'])
@@ -111,7 +113,8 @@ def comment_feed():
     db.session.commit()
 
     # Emit a Socket.IO event to notify clients
-    emit('feed_commented', {'feed_id': feed_id, 'user_id': current_user.id, 'text': text}, broadcast=True,namespace='/business')
+    emit('feed_commented', {'feed_id': feed_id, 'user_id': current_user.id, 'text': text}, broadcast=True,
+         namespace='/business')
 
     return jsonify({'message': 'Comment added successfully'})
 
@@ -127,9 +130,12 @@ def get_feed_comments():
         return jsonify({'error': 'Feed not found'}), 404
 
     comments = Comment_feed.query.filter_by(feed_id=feed.id).all()
-    comments_data = [{'id': comment.id, 'text': comment.text, 'user_id': comment.user_id, 'timestamp': comment.timestamp} for comment in comments]
+    comments_data = [
+        {'id': comment.id, 'text': comment.text, 'user_id': comment.user_id, 'timestamp': comment.timestamp} for comment
+        in comments]
 
     return jsonify({'comments': comments_data})
+
 
 # Pin Feed
 @business_bp.route('/pin_feed', methods=['PUT'])
@@ -148,6 +154,7 @@ def pin_feed():
     db.session.commit()
 
     return jsonify({'message': 'Feed pinned successfully'})
+
 
 # Delete Feed
 @business_bp.route('/delete_feed', methods=['DELETE'])
@@ -177,30 +184,31 @@ def get_feeds():
 
     feeds_data = [
         {
-            'feed_object':{
-            'id': feed.id,
-            'content': feed.content,
-            'user_id': feed.user_id,
-            'timestamp': feed.timestamp,
-            'likes_count': len(feed.likes),
-            'comments_count': len(feed.comments),
-            'image': feed.image
+            'feed_object': {
+                'id': feed.id,
+                'content': feed.content,
+                'user_id': feed.user_id,
+                'timestamp': feed.timestamp,
+                'likes_count': len(feed.likes),
+                'comments_count': len(feed.comments),
+                'image': feed.image
             },
-            'user_object':{
+            'user_object': {
                 "user_id": feed.user.id,
-                    "followers_count": Follow.query.filter_by(followed_id=feed.user_id).count(),
-                    "followings_count":  Follow.query.filter_by(follower_id=feed.user_id).count(),
-                    "username": feed.user.full_name,
-                    "profile_pic": feed.user.photo,
-                    "facebook_id": "",
-                    "instagram_id": "",
-                    "tiktok_id": "",
-                    "youtube_id ": "",
+                "followers_count": Follow.query.filter_by(followed_id=feed.user_id).count(),
+                "followings_count": Follow.query.filter_by(follower_id=feed.user_id).count(),
+                "username": feed.user.full_name,
+                "profile_pic": feed.user.photo,
+                "facebook_id": "",
+                "instagram_id": "",
+                "tiktok_id": "",
+                "youtube_id ": "",
             }
         } for feed in feeds.items
     ]
 
     return jsonify({'feeds': feeds_data})
+
 
 # Close Feed
 
@@ -209,7 +217,6 @@ def get_feeds():
 @business_bp.route('/create_job', methods=['POST'])
 @jwt_required()
 def create_job():
-
     job_title = request.form.get('job_title')
     job_description = request.form.get('job_description')
     prefer_city = request.form.get('prefer_city')
@@ -231,6 +238,7 @@ def create_job():
 
     return jsonify({'message': 'Job created successfully'}), 201
 
+
 @business_bp.route('/jobs', methods=['GET'])
 def get_jobs():
     page = int(request.args.get('page', 1))
@@ -240,19 +248,32 @@ def get_jobs():
 
     jobs_data = [
         {
-            'id': job.id,
-            'title': job.job_title,
-            'description': job.job_description,
-            'prefer_city': job.prefer_city,
-            'job_type': job.job_type,
-            'user_id': job.user_id,
-            'timestamp': job.timestamp,
-            'likes_count': len(job.likes),
-            'comments_count': len(job.comments),
+            'job_object': {'id': job.id,
+                           'title': job.job_title,
+                           'description': job.job_description,
+                           'prefer_city': job.prefer_city,
+                           'job_type': job.job_type,
+                           'user_id': job.user_id,
+                           'timestamp': job.timestamp,
+                           'likes_count': len(job.likes),
+                           'comments_count': len(job.comments), },
+            'user_object': {
+                "user_id": job.user.id,
+                "followers_count": Follow.query.filter_by(followed_id=job.user_id).count(),
+                "followings_count": Follow.query.filter_by(follower_id=job.user_id).count(),
+                "username": job.user.full_name,
+                "profile_pic": job.user.photo,
+                "facebook_id": "",
+                "instagram_id": "",
+                "tiktok_id": "",
+                "youtube_id ": "",
+            }
+
         } for job in jobs.items
     ]
 
     return jsonify({'jobs': jobs_data})
+
 
 @business_bp.route('/like_job', methods=['POST'])
 @jwt_required()
@@ -276,6 +297,7 @@ def like_job():
 
     return jsonify({'message': 'Job liked successfully'})
 
+
 @business_bp.route('/comment_job', methods=['POST'])
 @jwt_required()
 def comment_job():
@@ -296,6 +318,7 @@ def comment_job():
 
     return jsonify({'message': 'Comment added successfully'}), 201
 
+
 @business_bp.route('/job_details', methods=['GET'])
 @jwt_required()
 def get_job_details():
@@ -314,14 +337,16 @@ def get_job_details():
 @business_bp.route('/job_comments', methods=['GET'])
 @jwt_required()
 def get_job_comments():
-    job_id= request.args.get('job_id')
-    job= Job.query.get(job_id)
+    job_id = request.args.get('job_id')
+    job = Job.query.get(job_id)
 
     if not job:
         return jsonify({'error': 'Job not found'}), 404
 
     comments = JobComment.query.filter_by(job_id=job.id).all()
-    comments_data = [{'id': comment.id, 'text': comment.text, 'user_id': comment.user_id, 'timestamp': comment.timestamp} for comment in comments]
+    comments_data = [
+        {'id': comment.id, 'text': comment.text, 'user_id': comment.user_id, 'timestamp': comment.timestamp} for comment
+        in comments]
 
     return jsonify({'comments': comments_data})
 
@@ -341,8 +366,7 @@ def apply_job():
     if not job:
         return jsonify({'error': 'Job not found'}), 404
 
-
-    cv_filename = str(current_user.id)+'_'+secure_filename(cv_file.filename)
+    cv_filename = str(current_user.id) + '_' + secure_filename(cv_file.filename)
     cv_path = os.path.join(CV_FOLDER, cv_filename)
     cv_file.save(cv_path)
 
@@ -357,6 +381,7 @@ def apply_job():
     db.session.commit()
 
     return jsonify({'message': 'Job application submitted successfully'}), 201
+
 
 @business_bp.route('/search_jobs', methods=['GET'])
 def search_jobs():
@@ -390,17 +415,16 @@ def search_jobs():
 
     return jsonify({'jobs': jobs_data})
 
+
 # Events
 
 @business_bp.route('/create_event', methods=['POST'])
 @jwt_required()
 def create_event():
-
     title = request.form.get('title')
     description = request.form.get('description')
     location = request.form.get('location')
     charges = request.form.get('charges')
-
 
     if not title or not description or not location or charges is None:
         return jsonify({'error': 'All fields are required'}), 400
@@ -482,6 +506,7 @@ def comment_event():
 
     return jsonify({'message': 'Comment added successfully'}), 201
 
+
 @business_bp.route('/event_details', methods=['GET'])
 @jwt_required()
 def get_event_details():
@@ -500,16 +525,19 @@ def get_event_details():
 @business_bp.route('/event_comments', methods=['GET'])
 @jwt_required()
 def get_event_comments():
-    event_id= request.args.get('event_id')
-    event= Event.query.get(event_id)
+    event_id = request.args.get('event_id')
+    event = Event.query.get(event_id)
 
     if not event:
         return jsonify({'error': 'Job not found'}), 404
 
     comments = EventComment.query.filter_by(event_id=event.id).all()
-    comments_data = [{'id': comment.id, 'text': comment.text, 'user_id': comment.user_id, 'timestamp': comment.timestamp} for comment in comments]
+    comments_data = [
+        {'id': comment.id, 'text': comment.text, 'user_id': comment.user_id, 'timestamp': comment.timestamp} for comment
+        in comments]
 
     return jsonify({'comments': comments_data})
+
 
 @business_bp.route('/search_events', methods=['GET'])
 @jwt_required()
@@ -539,6 +567,7 @@ def search_events():
     ]
 
     return jsonify({'jobs': events_data})
+
 
 @business_bp.route('/events', methods=['GET'])
 @jwt_required()
@@ -598,6 +627,7 @@ def add_experience():
 
     return jsonify({'message': 'Experience added successfully'})
 
+
 @business_bp.route('/get_experience', methods=['GET'])
 @jwt_required()
 def get_experience():
@@ -650,6 +680,7 @@ def edit_experience():
 
     return jsonify({'message': 'Experience updated successfully'})
 
+
 @business_bp.route('/delete_experience', methods=['DELETE'])
 @jwt_required()
 def delete_experience():
@@ -657,7 +688,7 @@ def delete_experience():
     if not experience_id:
         return jsonify({'error': 'Experience ID is required'}), 400
 
-    user_experience = UserExperience.query.filter_by(user_id=current_user.id,id=experience_id).first()
+    user_experience = UserExperience.query.filter_by(user_id=current_user.id, id=experience_id).first()
 
     if not user_experience:
         return jsonify({'error': 'Experience not found'}), 404
@@ -667,10 +698,10 @@ def delete_experience():
 
     return jsonify({'message': 'Experience deleted successfully'})
 
+
 @business_bp.route('/add_portfolio', methods=['POST'])
 @jwt_required()
 def add_portfolio():
-
     title = request.form.get('title')
     link = request.form.get('link')
 
@@ -687,6 +718,7 @@ def add_portfolio():
     db.session.commit()
 
     return jsonify({'message': 'Portfolio added successfully'})
+
 
 @business_bp.route('/get_experience', methods=['GET'])
 @jwt_required()
@@ -709,6 +741,7 @@ def get_portfolio():
 
     return jsonify({'portfolio': experience_data}), 200
 
+
 @business_bp.route('/edit_portfolio', methods=['POST'])
 @jwt_required()
 def edit_portfolio():
@@ -728,6 +761,7 @@ def edit_portfolio():
 
     return jsonify({'message': 'Portfolio updated successfully'})
 
+
 @business_bp.route('/delete_portfolio', methods=['DELETE'])
 @jwt_required()
 def delete_portfolio():
@@ -742,6 +776,7 @@ def delete_portfolio():
 
     return jsonify({'message': 'Portfolio deleted successfully'})
 
+
 @business_bp.route('/edit_about', methods=['POST'])
 @jwt_required()
 def edit_about():
@@ -752,6 +787,7 @@ def edit_about():
     user_about.about = about
     db.session.commit()
     return jsonify({'message': 'About updated successfully'})
+
 
 @business_bp.route('/get_about', methods=['GET'])
 @jwt_required()
