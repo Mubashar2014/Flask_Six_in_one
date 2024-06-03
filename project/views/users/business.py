@@ -10,7 +10,7 @@ from flask_socketio import emit
 from project.config import CV_FOLDER
 from project.extensions.extensions import db, socketio
 from project.models.users import Feed, Like_feed, Comment_feed, Job, JobLike, JobComment, JobApplication, Event, \
-    EventLike, EventComment, UserExperience, UserPortfolio, User
+    EventLike, EventComment, UserExperience, UserPortfolio, User, Follow
 
 import boto3
 from botocore.exceptions import NoCredentialsError
@@ -177,6 +177,7 @@ def get_feeds():
 
     feeds_data = [
         {
+            'feed_object':{
             'id': feed.id,
             'content': feed.content,
             'user_id': feed.user_id,
@@ -184,7 +185,18 @@ def get_feeds():
             'likes_count': len(feed.likes),
             'comments_count': len(feed.comments),
             'image': feed.image
-
+            },
+            'user_object':{
+                "user_id": feed.user.id,
+                    "followers_count": Follow.query.filter_by(followed_id=feed.user_id).count(),
+                    "followings_count":  Follow.query.filter_by(follower_id=feed.user_id).count(),
+                    "username": feed.user.full_name,
+                    "profile_pic": feed.user.photo,
+                    "facebook_id": "",
+                    "instagram_id": "",
+                    "tiktok_id": "",
+                    "youtube_id ": "",
+            }
         } for feed in feeds.items
     ]
 
